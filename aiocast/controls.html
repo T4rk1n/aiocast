@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Aiocast control</title>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css" integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous">
+</head>
+<body>
+<div>
+    <div>Title: <span id="title">%(title)</span></div>
+    <div>Playback: <span id="current">%(current)</span>/<span id="duration">%(duration)</span></div>
+    <div>State: <span id="state">%(state)</span></div>
+    <div>
+        <progress id="progress" max="%(duration)" value="%(current)"></progress>
+    </div>
+    <div id="controls">
+        <button type="button" class="player-btn fas fa-play" id="play"></button>
+        <button type="button" class="player-btn fas fa-pause" id="pause"></button>
+        <button type="button" class="player-btn fas fa-stop" id="stop"></button>
+    </div>
+</div>
+<script>
+    (function() {
+        // Cheap man jquery
+        function $(selector) {
+            return document.querySelector(selector);
+        }
+
+        var serverUrl = '%(server)';
+        var duration = Number.parseFloat('%(duration)');
+        var ws = new WebSocket('ws://'+ serverUrl +'/media/ws');
+        var state = $('#state');
+        var currentTime = $('#current');
+        var progress = $('#progress');
+
+        ws.addEventListener('message', function(e) {
+            var payload = JSON.parse(e.data);
+            currentTime.innerText = payload.current_time;
+            state.innerText = payload.state;
+            if (!duration) {
+                duration = progress.max = payload.duration;
+            }
+            progress.value = payload.current_time;
+            if (['IDLE', 'UNKNOWN'].includes(state)) {
+                console.log('close');
+                ws.close();
+            }
+        });
+
+        var actions = ['play', 'pause', 'stop'];
+        actions.forEach(function(e) {
+            $('#' + e).addEventListener('click', function(event) {
+                ws.send(event.target.id);
+            });
+        });
+    })();
+</script>
+</body>
+</html>
