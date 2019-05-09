@@ -115,9 +115,13 @@ class Aiocast(CliApp):
             '--mimetype',
             help='Set the mimetype of the media, otherwise will guess.'
         ),
+        Argument(
+            '-s', '--subtitles',
+            help='Path to a subtitle files (Only VTT supported)',
+        ),
         description='Cast a video'
     )
-    async def play(self, media, device_name, port, timeout, idle, local_ip, mimetype):
+    async def play(self, media, device_name, port, timeout, idle, local_ip, mimetype, subtitles):
         path = os.path.expanduser(media)
         server_port = port or self.configs.get('cast_server_port')
 
@@ -125,7 +129,7 @@ class Aiocast(CliApp):
             'buffer_start': 0,
             'buffer_warning': '',
             'stopped': False,
-            'idle_time': 0
+            'idle_time': 0,
         }
 
         def is_stopped():
@@ -158,6 +162,23 @@ class Aiocast(CliApp):
         await self.executor.execute(cast.wait)
 
         own_ip = local_ip or get_own_ip(cast.host, cast.port)
+        cast_server = f'{own_ip}:{server_port}'
+
+        if subtitles:
+            sub_type = subtitles.split('.')[-1]
+            if sub_type != 'vtt':
+                self.logger.warn(
+                    f'Subtitle type not supported {sub_type}, '
+                    f'convert at: https://www.3playmedia.com/solutions'
+                    f'/features/tools/captions-format-converter/'
+                )
+            sub_type = f'text/{sub_type}'
+            sub_uri = f'http://{cast_server}/subtitles/{os.path.basename(subtitles)}'
+
+            self.logger.debug(f'Using subtitles {subtitles}:{sub_type}:{sub_uri}')
+        else:
+            sub_type = None
+            sub_uri = None
 
         site = await cast_server_factory(
             path, own_ip, server_port, cast,
@@ -165,10 +186,10 @@ class Aiocast(CliApp):
             loop=self.executor.loop,
             stopper=play_stopper,
             is_stopped=is_stopped,
+            subtitles=subtitles,
         )
         await sp
 
-        cast_server = f'{own_ip}:{server_port}'
         self.logger.debug(f'Cast server started at {cast_server}')
         self.logger.debug(f'Content-Type: {content_type}')
 
@@ -176,6 +197,8 @@ class Aiocast(CliApp):
             f'http://{cast_server}/{os.path.basename(media)}',
             content_type=content_type,
             title=os.path.basename(media),
+            subtitles=sub_uri,
+            subtitles_mime=sub_type,
         )
 
         sp = spinner(
@@ -188,6 +211,10 @@ class Aiocast(CliApp):
             sp, self.executor.execute(cast.media_controller.block_until_active)
         )
         cast.media_controller.play()
+
+        if subtitles:
+            cast.media_controller.update_status()
+            cast.media_controller.enable_subtitle(1)
 
         def on_continue():
             return cast.media_controller.status.player_is_playing
@@ -208,7 +235,7 @@ class Aiocast(CliApp):
             cast.media_controller.pause()
 
         def on_toggle(*args):
-            """<Space>: Toggle play/pause."""
+            """<Space> Toggle play/pause."""
             state = cast.media_controller.status.player_state
             self.logger.debug(f'toggle {state}')
             if state == PLAYING:

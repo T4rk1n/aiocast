@@ -6,6 +6,7 @@ import typing
 import aiohttp
 import pychromecast
 from aiohttp import web
+import aiohttp_cors
 
 
 def replace_all(template, **kwargs):
@@ -17,7 +18,7 @@ def replace_all(template, **kwargs):
 
 async def cast_server_factory(
         video_path, host, port, cast: pychromecast.Chromecast, loop=None,
-        logger=None, start=True, stopper=None, is_stopped=None,
+        logger=None, start=True, stopper=None, is_stopped=None, subtitles=None,
 ):
     async def handle_video(_):
         return web.FileResponse(video_path)
@@ -49,6 +50,10 @@ async def cast_server_factory(
         )
 
         return web.Response(body=output, content_type='text/html')
+
+    async def handle_subtitles(_):
+        return web.FileResponse(subtitles,
+                                headers={'Content-Type': 'text/vtt'})
 
     async def handle_ws(request: aiohttp.web.Request):
         ws = web.WebSocketResponse()
@@ -101,9 +106,26 @@ async def cast_server_factory(
         web.get('/media/play', handle_play),
         web.get('/media/status', handle_status),
         web.get('/media/stop', handle_stop),
-        web.get('/media/ws', handle_ws)
+        web.get('/media/ws', handle_ws),
+        web.get('/subtitles', handle_subtitles)
     ])
+    if subtitles:
+        app.add_routes([web.get(f'/subtitles/{os.path.basename(subtitles)}', handle_subtitles)])
+
+    # Subtitles needs cors.
+    cors = aiohttp_cors.setup(app, defaults={
+        "*": aiohttp_cors.ResourceOptions(
+            allow_credentials=True,
+            expose_headers="*",
+            allow_headers="*",
+        )
+    })
+
+    for route in app.router.routes():
+        cors.add(route)
+
     runner = web.AppRunner(app)
+
     await runner.setup()
     site = web.TCPSite(runner, host, port)
 
