@@ -11,6 +11,7 @@ aiohttp = "==3.5.4"
 pychromecast = "==3.2.1"
 precept = "==0.1.0"
 appdirs = "*"
+aiohttp-cors = "==0.7.0"
 
 [requires]
 python_version = "3.7"
