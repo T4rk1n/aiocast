@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "09e7d40f08aac536ece5f5fd3a0b5437ace93eb59572737cb6504410402cbbe3"
+            "sha256": "0c190588459d7e7046e74a9682e7f51b00ef139bf493ece31c7d861e6c3a675c"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -151,10 +151,10 @@
         },
         "precept": {
             "hashes": [
-                "sha256:7f1cb66718984262e081e5fe38f4dbbe6999df40342fdebf6dcb35045fdba0c5"
+                "sha256:61b145796c3c39fd340ffcd045cc9ea4632cdbe58b92611e8c3201da5a366248"
             ],
             "index": "pypi",
-            "version": "==0.1.0"
+            "version": "==0.1.1"
         },
         "protobuf": {
             "hashes": [
