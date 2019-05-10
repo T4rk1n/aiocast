@@ -12,7 +12,7 @@ from concurrent.futures.thread import ThreadPoolExecutor
 import pychromecast
 import appdirs
 
-from precept import CliApp, Argument, Command, spinner, KeyHandler
+from precept import CliApp, Argument, Command, spinner, KeyHandler, Keys
 
 from aiocast._cast_server import cast_server_factory
 from aiocast._constants import BUFFERING, IDLE, STOPPED_STATES, PLAYING, PAUSED
@@ -235,7 +235,7 @@ class Aiocast(CliApp):
             cast.media_controller.pause()
 
         def on_toggle(*args):
-            """<Space> Toggle play/pause."""
+            """Toggle play/pause."""
             state = cast.media_controller.status.player_state
             self.logger.debug(f'toggle {state}')
             if state == PLAYING:
@@ -262,8 +262,9 @@ class Aiocast(CliApp):
             'x': on_play,
             'p': on_pause,
             's': on_stop,
-            ' ': on_toggle,
+            Keys.SPACE: on_toggle,
             'q': on_quit,
+            Keys.ESCAPE: on_quit,
         }
 
         keyhandler = KeyHandler(handlers, loop=self.loop)
