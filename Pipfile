@@ -9,8 +9,8 @@ pylint = "==2.3.1"
 [packages]
 aiohttp = "==3.5.4"
 pychromecast = "==3.2.1"
-precept = "==0.1.1"
-appdirs = "*"
+precept = "==0.3.0"
+appdirs = "==1.4.3"
 aiohttp-cors = "==0.7.0"
 
 [requires]
