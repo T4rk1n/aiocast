@@ -12,9 +12,11 @@ from concurrent.futures.thread import ThreadPoolExecutor
 import pychromecast
 import appdirs
 
-from precept import CliApp, Argument, Command, spinner, KeyHandler, Keys
+from precept import Precept, Argument, Command
+from precept.console import spinner, KeyHandler, Keys
 
 from aiocast._cast_server import cast_server_factory
+from aiocast._config import AiocastConfig
 from aiocast._constants import BUFFERING, IDLE, STOPPED_STATES, PLAYING, PAUSED
 from aiocast._version import __version__
 
@@ -31,12 +33,9 @@ def get_own_ip(host='8.8.8.8', port=80):
     return ip
 
 
-class Aiocast(CliApp):
+class Aiocast(Precept):
     """Cast videos to chromecast devices."""
-    default_configs = {
-        'default_device': '',
-        'cast_server_port': 5416,
-    }
+    config = AiocastConfig()
     version = __version__
 
     def __init__(self):
@@ -55,11 +54,11 @@ class Aiocast(CliApp):
 
     async def _get_cast(self, device_name=None, first=True, timeout=None) -> pychromecast.Chromecast:
         if not device_name:
-            device_name = self.configs.get('default_device')
+            device_name = self.config.default_device
         if not device_name and not first:
             self.logger.error('No device targeted!')
             self.logger.info(
-                f'Set a default target device in {self.cli.config_file} or '
+                f'Set a default target device in {self.config_path} or '
                 f'specify a --device-name'
             )
             await self.list_devices()
@@ -123,7 +122,8 @@ class Aiocast(CliApp):
     )
     async def play(self, media, device_name, port, timeout, idle, local_ip, mimetype, subtitles):
         path = os.path.expanduser(media)
-        server_port = port or self.configs.get('cast_server_port')
+        device_name = device_name or self.config.default_device
+        server_port = port or self.config.cast_server_port
 
         ns = {
             'buffer_start': 0,
