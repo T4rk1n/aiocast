@@ -7,13 +7,14 @@ import socket
 import sys
 import mimetypes
 import time
+import datetime
 from concurrent.futures.thread import ThreadPoolExecutor
 
 import pychromecast
 import appdirs
 
 from precept import Precept, Argument, Command
-from precept.console import spinner, KeyHandler, Keys
+from precept.console import spinner, KeyHandler, Keys, progress_bar
 
 from aiocast._cast_server import cast_server_factory
 from aiocast._config import AiocastConfig
@@ -281,9 +282,26 @@ class Aiocast(Precept):
         # Wait until complete
         await asyncio.sleep(0.1)
 
-        def on_spin():
+        def play_loop():
             if is_stopped():
                 return True
+            state = cast.media_controller.status.player_state
+            if state == IDLE:
+                if not ns['idle_time']:
+                    ns['idle_time'] = time.time()
+                    return False
+                delay = time.time() - ns['idle_time']
+                if delay >= idle:
+                    play_stopper()
+                    return True
+                return False
+            if ns['idle_time']:
+                ns['idle_time'] = 0
+            return state in STOPPED_STATES
+
+        keyhandler.print_keys()
+
+        def wait_for_buffer():
             state = cast.media_controller.status.player_state
             if state == BUFFERING and timeout is not None:
                 if not ns['buffer_start']:
@@ -296,29 +314,36 @@ class Aiocast(Precept):
                     play_stopper()
                     return True
                 return False
-            elif state == IDLE:
-                if not ns['idle_time']:
-                    ns['idle_time'] = time.time()
-                    return False
-                delay = time.time() - ns['idle_time']
-                if delay >= idle:
-                    play_stopper()
-                    return True
-                return False
             if ns['buffer_start']:
                 ns['buffer_start'] = 0
-            if ns['idle_time']:
-                ns['idle_time'] = 0
-            return state in STOPPED_STATES
+            return state == PLAYING
 
-        keyhandler.print_keys()
-        spin = spinner(
-            on_spin,
+        await spinner(
+            wait_for_buffer,
             message=lambda: f'{cast.media_controller.status.player_state} ...'
         )
 
-        async with keyhandler:
-            await spin
+        def get_time():
+            if play_loop():
+                raise StopAsyncIteration
+            return cast.media_controller.status.adjusted_current_time or 0
+
+        def progress_formatter(x, y):
+            return f' {datetime.timedelta(seconds=int(x))} /' \
+                f' {datetime.timedelta(seconds=int(y))} -' \
+                f' {cast.media_controller.status.player_state}'
+
+        progress = progress_bar(
+            get_time, cast.media_controller.status.duration,
+            sleep_time=0.1,
+            value_formatter=progress_formatter,
+        )
+
+        try:
+            async with keyhandler:
+                await progress
+        except StopAsyncIteration:
+            pass
 
         if ns['buffer_warning']:
             self.logger.warn(ns['buffer_warning'])
