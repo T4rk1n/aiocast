@@ -297,7 +297,7 @@ class Aiocast(Precept):
                 return False
             if ns['idle_time']:
                 ns['idle_time'] = 0
-            return state in STOPPED_STATES
+            return state == IDLE
 
         keyhandler.print_keys()
 
