@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.0.4] (2019-06-23)
+### Fixed
+
+- Fixed buffering stop after a couple seconds of starting.
+
 ## [0.0.3] (2019-06-02)
 
 ### Added
