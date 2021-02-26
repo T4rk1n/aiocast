@@ -7,7 +7,7 @@ verify_ssl = true
 pylint = "==2.3.1"
 
 [packages]
-aiohttp = "==3.5.4"
+aiohttp = "==3.7.4"
 pychromecast = "==3.2.1"
 precept = "==0.3.0"
 appdirs = "==1.4.3"
